@@ -1,0 +1,304 @@
+---
+title: "Red Wine Quality"
+author: "Caio Lacerda"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+Red Wine Quality by Caio Lacerda
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+
+library(ggplot2)
+library(GGally)
+library(memisc)
+
+# knitr: Suppress code/messages/warnings 
+#        Set default plot options and center them
+knitr::opts_chunk$set(fig.width=9,fig.height=5,fig.path='Figs/',
+                      fig.align='center',tidy=TRUE,
+                      echo=FALSE,warning=FALSE,message=FALSE)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# set working directory
+setwd("/Users/caiolacerda/Documents/DataScientistUdacity/data_sets/")
+# load data
+rw <- read.csv("wineQualityReds.csv")
+# drop the X column, it's an index.
+rw$X <- NULL
+```
+
+This dataset contains Red Wine quality measurements. The inputs include objective tests (e.g. PH values) and the output is based on sensory data (median of at least 3 evaluations made by wine experts). Each expert graded the wine quality between 0 (very bad) and 10 (very excellent).
+
+# Univariate Plots Section
+
+Checking the structure and variables of the dataset.
+
+```{r echo=FALSE, Univariate_Plots}
+# Creating a quality.factor to receive the quality variable as an ordered ranking.
+rw$quality.factor <- factor(rw$quality, ordered = T)
+
+# Descriptive statistics for the dataset
+dim(rw)
+str(rw)
+summary(rw)
+```
+
+Transformed the quality variable in a ordered factor.
+
+In this section we can see the distribution of the variables in the dataset.
+
+```{r echo=FALSE, warning=FALSE}
+# Histogram - Quality
+qplot(quality.factor, data = rw, 
+      fill = I("blue"), color = I("black")) +
+  scale_y_continuous(breaks = seq(0, 600, 50))
+```
+
+We can see above that the majority of data has ratings between 5/6. With a few rating 3 or 8.
+
+```{r echo=FALSE, warning=FALSE}
+# Histogram - Alcohol
+qplot(alcohol, data = rw, binwidth = .2,
+      fill = I("green"), color = I("black")) + 
+  scale_x_continuous(breaks = seq(8, 15, .2))
+```
+
+Here in alcohol the distribution lies between 8 to 15%.
+
+```{r echo=FALSE, warning=FALSE}
+# Histogram - Residual Sugar
+qplot(residual.sugar, data = rw, binwidth = .1,
+      fill = I("pink"), color = I("black")) + 
+  scale_x_continuous(breaks = seq(0, 5, .5),
+                     limits = 
+                       c(0, quantile(rw$residual.sugar, .95)))
+```
+
+For sugar we removed some high outliers (we could check this in the summary with a max value of 15) to verify the structure of the distribution.
+
+```{r echo=FALSE, warning=FALSE}
+# Histogram - Citric Acid
+qplot(citric.acid, data = rw, binwidth = .01,
+      fill = I("orange"), color = I("black")) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1),
+                     limits = c(0, .8))
+```
+
+For citric acid we can see the majority of the values between 0 and .8
+
+```{r echo=FALSE, warning=FALSE}
+# Histogram - pH
+qplot(pH, data = rw, binwidth = .05,
+      fill = I("grey"), color = I("black")) +
+  scale_x_continuous(breaks = seq(2.5, 4, .5))
+
+```
+
+For pH between 2.5 and 4.
+
+# Univariate Analysis
+
+The dataset has 1599 observations of 12 variables.
+
+The features that comes to mind first, which we imagine that influences the quality ratings are alcohol, residual.sugar/chlorides, perhaps citric.acid, this one is described as adding "'freshness' and flavor to wines"
+
+Perhaps all the other features have underlying significance, however, as they have no described effect in taste, they initially are not being analysed.
+
+Residual sugar has very high outliers.
+The bulk of data in have quality values of 5 or 6.
+The citric acid is somewhat evenly distributed between 0 and .5.
+Converted the quality variable into an ordered factor, since they have fixed classifications.
+
+# Bivariate Plots Section
+
+## Variables x Quality plots
+
+Here I decided to plot all the variables that were investigated in the first analysis, which I believe are more likely to be correlated with the quality rating.
+
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
+
+# Boxplot - Alcohol/Quality
+ggplot(aes(x = quality.factor, y = alcohol), data = rw) +
+  geom_boxplot() + 
+  ggtitle("Alcohol") +
+  stat_summary(geom = "point", fun.y = "mean",
+               shape = 8, color = I("red"))
+
+# Boxplot - Residual Sugar/Quality
+ggplot(aes(x = quality.factor, y = residual.sugar), data = rw) +
+  geom_boxplot() + 
+  ggtitle("Residual Sugar") +
+  stat_summary(geom = "point", fun.y = "mean",
+               shape = 8, color = I("red"))
+
+# Boxplot - Citric Acid/Quality
+ggplot(aes(x = quality.factor, y = citric.acid), data = rw) +
+  geom_boxplot() + 
+  ggtitle("Citric Acid") +
+  stat_summary(geom = "point", fun.y = "mean",
+               shape = 8, color = I("red"))
+
+# Boxplot - pH/Quality
+ggplot(aes(x = quality.factor, y = pH), data = rw) +
+  geom_boxplot() + 
+  ggtitle("pH") +
+  stat_summary(geom = "point", fun.y = "mean",
+               shape = 8, color = I("red"))
+
+```
+
+Between the four plots, we could verify that only alcohol has a visible change in distribution and mean in the various quality ratings.
+
+## GGPairs for all variables
+
+In this section I decided to plot all the variables together and their correlations to verify if some other feature has some kind of relevance or relationship between them.
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,fig.width=9, fig.height=7}
+# Plot of all the features
+ggpairs(rw) +
+  theme(text = element_text(size=9), 
+        axis.text.x = element_text(angle = 45,
+                                   vjust = 1, hjust = 1, size=7))
+```
+
+With this I could see relationships between pH and the acidity describing variables, which makes sense. However I decided to verify if there was any oddity between the highest of them and pH.
+
+## Plots pH/Acidity features
+
+```{r echo=FALSE}
+
+# Scatterplot - pH x Citric Acid
+ggplot(aes(citric.acid, pH), data = rw) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+# Scatterplot - pH x Fixed Acidity
+ggplot(aes(fixed.acidity, pH), data = rw) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+# Descriptive correlation between the pH/Acidity variables
+with(rw, cor(citric.acid, fixed.acidity))
+with(rw, cor(pH, fixed.acidity))
+with(rw, cor(citric.acid, pH))
+```
+
+In these we could check that they are reasonably distributed and correlated.
+
+# Bivariate Analysis
+
+As we could see from the previous boxplots, the only variable that has almost has .5 of correlation with the quality variable is alcohol, with .476, the second closest correlation is a negative one, volatile.acidity, with -.391.
+
+As for other variables we can see negative correlations with slight linear relationship between pH and fixed.acidity and citric.acid, which makes sense, given that pH is an acidity measure, the higher the lower the pH the higher the acidity, and the quantity of citric.acid varies with the fixed acidity. 
+These correlations boast the highest values (.671 and -.682), as we could see.
+
+# Multivariate Plots Section
+
+Verifying the correlation between volatile acidity, in which we could verify earlier in the ggpairs that has a high correlation and could contribute to a predictive model, and alcohol vs quality. Bar a few outliers, we can see that there is a tendency. Curious though, because this feature measure the "vinegar taste" of the wine and its said that the more the wine has this the more unpleasant it tastes.
+
+```{r echo=FALSE, warning=FALSE, Multivariate_Plots}
+# Distribution between Quality, Alcohol and Volatile Acidity
+ggplot(aes(quality.factor, alcohol, color = volatile.acidity),
+       data = rw) +
+  geom_jitter() +
+  scale_color_gradient2(midpoint = median(rw$volatile.acidity),low = I("red"), high = I("blue"))
+```
+
+I also decided to plot the sulphates feature, which has, considering the other features, a good correlation to quality.
+This is an inorganic compound said not to influence in the taste, but we can verify a little correlation in the plot.
+
+```{r echo=FALSE, warning=FALSE}
+# Distribution between Quality, Alcohol and Sulphate
+ggplot(aes(quality.factor, alcohol, color = sulphates),
+       data = rw) +
+  geom_jitter() +
+  scale_color_gradient2(midpoint = median(rw$sulphates),low = I("red"), high = I("blue"))
+```
+
+We can verify as well the relation between the three variables we checked before, pH and acidity. 
+
+```{r echo=FALSE}
+ggplot(aes(citric.acid, pH, color = fixed.acidity), data = rw) +
+  geom_point() +
+  stat_smooth(method = "lm", color = I("red"))
+```
+
+With all this said, we can try to build a model with the best variables available.
+
+```{r echo=FALSE}
+m1 <- lm(quality ~ alcohol + volatile.acidity, data = rw)
+m2 <- update(m1, ~ . + sulphates)
+m3 <- update(m2, ~ . + citric.acid)
+
+mtable(m1, m2, m3)
+```
+
+We can see that the model does not perform very well as the features are not too strongly descriptive of the quality ratings.
+
+# Multivariate Analysis
+
+We could see the relationship between the pH and acidity variables clearly in the plot above. 
+We could also verify the volatile acidity/sulphates and alcohol to verify the correlation checked before against the quality ratings.
+I tried to build a linear model based on some of the variables analysed.
+The model is not able to explain all the variance in the data, with a r-squared of just .33, which makes it hard to predict with the variables we have.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(aes(x = quality.factor, y = alcohol), data = rw) +
+  xlab("Quality score") + ylab("Alcohol (% by Volume)") + 
+  geom_boxplot() + 
+  scale_y_continuous(breaks = seq(8, 15, 1)) +
+  stat_summary(geom = "point", fun.y = "mean",
+               shape = 8, color = I("red")) +
+  ggtitle("Alcohol x Quality")
+```
+
+
+### Description One
+
+This first plot, helped me to verify the tendency of alcohol being correlated to the quality score. As we can see the median and mean with a clear upwards distribution tendency as the quality increases. So this is a good feature to be considered for a model, in comparison to all the others.
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+ggplot(aes(citric.acid, pH), data = rw) +
+  xlab("Citric Acid (g / dm^3)") +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("pH and Citric Acid")
+```
+
+### Description Two
+
+This is one of the plots in which I could verify one of the strongest relationships in the dataset, the more citric acid the lower the pH, which makes sense with the components of the wine.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(quality.factor, alcohol, color = volatile.acidity),
+       data = rw) +
+  scale_y_continuous(breaks = seq(8, 15, 1)) +
+  xlab("Quality score") + ylab("Alcohol (% by Volume)") + 
+  geom_jitter() +
+  scale_color_gradient2(expression(atop(Volatile~Acidity,(g/dm^{3}))), midpoint = median(rw$volatile.acidity), low = I("red"), high = I("blue")) +
+  ggtitle("Alcohol and Quality, by Volatile~Acidity")
+```
+
+### Description Three
+
+In this one I could check the best 3 features description of the wine quality, these three have the best correlation in the dataset so it makes sense to see them all together. It's curious though, that high volatile acidity makes the wine better, because its the process of the wine "turning into vinegar".
+
+------
+
+# Reflection
+
+It's my debut exploring data on my own so it's been a nice first challenge exploring this dataset.
+The structure and values of the dataset are quite simple so exploring them individually had not been that difficult. A thing that was challenging for me was to verify that the variables were not too clearly descriptive of the target, correlations were low for the most of them, so the analysis had not been as straightforward as I thought it would be.
+I've grown accustomed to the R language, it's a very simple language, to work with, and my knowledge of it being just what I had in the course, it was very comfortable to use it during this analysis.
+For a future analysis it would be nice to figure out if a combination of the components of acidity could be more descriptive of the quality, and if the quality rating could be broken down into more descriptive features of taste, so we could verify what characteristics, according to the rater, made the quality rating, and verify more clearly if it makes sense with the components data.
